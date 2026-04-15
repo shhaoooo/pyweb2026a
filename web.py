@@ -1,6 +1,22 @@
 import random
 from flask import Flask, render_template, request
 from datetime import datetime
+import os
+import json
+import firebase_admin
+from firebase_admin import credentials
+from firestore.read3 import read3_view
+
+# ===== Firebase 初始化（唯一一次）=====
+if not firebase_admin._apps:
+    if os.path.exists('serviceAccountKey.json'):
+        cred = credentials.Certificate('serviceAccountKey.json')
+    else:
+        firebase_config = os.getenv('FIREBASE_CONFIG')
+        cred_dict = json.loads(firebase_config)
+        cred = credentials.Certificate(cred_dict)
+
+    firebase_admin.initialize_app(cred)
 
 app = Flask(__name__)
 
@@ -14,7 +30,12 @@ def index():
     link += "<a href='/account'>POST傳值</a><hr>"
     link += "<a href=/math>數學運算</a><hr>" 
     link += "<a href=/cup>擲茭</a><hr>"
+    link += "<a href=/read3>教師查詢</a>"
     return link
+
+@app.route("/read3", methods=["GET", "POST"])
+def read3():
+    return read3_view(request)
 
 @app.route("/mis")
 def course():
