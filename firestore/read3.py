@@ -1,18 +1,32 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
 import os
+import json
 
-# ===== Firebase 初始化（一定要有）=====
-if not firebase_admin._apps:
-    cred = credentials.Certificate(
-        os.path.join(os.path.dirname(__file__), "..", "serviceAccountKey.json")
-    )
-    firebase_admin.initialize_app(cred)
+# ===== Firebase 初始化（本地 + Vercel 都可）=====
+def init_firebase():
+    if not firebase_admin._apps:
+        if os.path.exists("serviceAccountKey.json"):
+            # 本地
+            cred = credentials.Certificate("serviceAccountKey.json")
+        else:
+            # 雲端（Vercel）
+            firebase_config = os.getenv("FIREBASE_CONFIG")
+            if not firebase_config:
+                raise ValueError("Firebase 環境變數未設定")
 
+            cred_dict = json.loads(firebase_config)
+            cred = credentials.Certificate(cred_dict)
+
+        firebase_admin.initialize_app(cred)
+
+
+# ===== 初始化 DB =====
+init_firebase()
 db = firestore.client()
 
 
-# ===== 查詢 =====
+# ===== 查詢功能 =====
 def search_teachers(keyword):
     results = []
 
@@ -33,7 +47,7 @@ def search_teachers(keyword):
     return results
 
 
-# ===== Web 用 =====
+# ===== Web 用（Flask）=====
 def read3_view():
     from flask import request, render_template
 
@@ -49,3 +63,18 @@ def read3_view():
         teachers=teachers,
         keyword=keyword
     )
+
+
+# ===== CLI 模式（終端機可用）=====
+if __name__ == "__main__":
+    keyword = input("請輸入老師名字關鍵字：")
+
+    result = search_teachers(keyword)
+
+    print("\n查詢結果：")
+
+    if result:
+        for t in result:
+            print(f"老師：{t['name']}，研究室：{t['lab']}")
+    else:
+        print("查無資料")
