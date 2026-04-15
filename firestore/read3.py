@@ -5,7 +5,7 @@ import os
 # ===== Firebase 初始化（安全版：避免重複）=====
 if not firebase_admin._apps:
     cred = credentials.Certificate(
-        os.path.join(os.path.dirname(__file__), "../serviceAccountKey.json")
+        os.path.join(os.path.dirname(__file__), "serviceAccountKey.json")
     )
     firebase_admin.initialize_app(cred)
 
