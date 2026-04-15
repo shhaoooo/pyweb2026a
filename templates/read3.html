@@ -1,38 +1,25 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>教師查詢</title>
-</head>
-<body>
-    <h1>教師查詢系統</h1>
+<h1>教師查詢系統</h1>
 
-    <form method="POST">
-        輸入老師姓名關鍵字：
-        <input type="text" name="keyword" required>
-        <button type="submit">查詢</button>
-    </form>
+<form method="POST">
+    輸入老師姓名關鍵字：
+    <input type="text" name="keyword" required>
+    <button type="submit">查詢</button>
+</form>
 
-    <hr>
+<hr>
 
-    {% if keyword %}
-        <h3>查詢關鍵字：{{ keyword }}</h3>
+<h3>查詢關鍵字：{{ keyword }}</h3>
 
-        {% if teachers %}
-            <ul>
-                {% for t in teachers %}
-                    <li>
-                        老師：{{ t.name }} <br>
-                        研究室：{{ t.lab }}
-                    </li>
-                    <hr>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p>查無資料</p>
-        {% endif %}
-    {% endif %}
+{% if teachers %}
+    {% for t in teachers %}
+        <p>
+            老師：{{ t.name }} <br>
+            研究室：{{ t.lab }}
+        </p>
+        <hr>
+    {% endfor %}
+{% else %}
+    <p>查無資料</p>
+{% endif %}
 
-    <a href="/">返回首頁</a>
-</body>
-</html>
+<a href="/">返回首頁</a>

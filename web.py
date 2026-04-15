@@ -1,4 +1,5 @@
 import random
+from firebase_admin import firestore
 from flask import Flask, render_template, request
 from datetime import datetime
 import os
@@ -18,7 +19,8 @@ if not firebase_admin._apps:
 
     firebase_admin.initialize_app(cred)
 
-app = Flask(__name__)
+db = firestore.client()
+app = Flask(__name__, template_folder="templates")
 
 @app.route("/")
 def index():
@@ -35,7 +37,30 @@ def index():
 
 @app.route("/read3", methods=["GET", "POST"])
 def read3():
-    return read3_view(request)
+    teachers = []
+    keyword = ""
+
+    if request.method == "POST":
+        keyword = request.form.get("keyword", "")
+
+        docs = db.collection("靜宜資管").get()
+
+        for doc in docs:
+            data = doc.to_dict()
+            name = data.get("name", "")
+            lab = data.get("lab", "")
+
+            if keyword in name:
+                teachers.append({
+                    "name": name,
+                    "lab": lab
+                })
+
+    return render_template(
+        "read3.html",
+        teachers=teachers,
+        keyword=keyword
+    )
 
 @app.route("/mis")
 def course():
