@@ -1,28 +1,29 @@
 import random
-from bs4 import BeautifulSoup
-from firebase_admin import firestore
-from flask import Flask, render_template, request, make_response, jsonify
-from datetime import datetime
 import os
 import json
 import firebase_admin
-from firebase_admin import credentials
 import requests
-from firestore.read3 import read3_view
+from bs4 import BeautifulSoup
+from flask import Flask, render_template, request, make_response, jsonify
+from datetime import datetime
+from firebase_admin import credentials, firestore
+from google import genai
+from google.genai import types
 
 # ===== Firebase 初始化（唯一一次）=====
-if not firebase_admin._apps:
+if not firebase_admin._apps:   # 防止重複初始化
     if os.path.exists('serviceAccountKey.json'):
+        # 本地環境
         cred = credentials.Certificate('serviceAccountKey.json')
     else:
+        # 雲端環境
         firebase_config = os.getenv('FIREBASE_CONFIG')
         cred_dict = json.loads(firebase_config)
         cred = credentials.Certificate(cred_dict)
 
     firebase_admin.initialize_app(cred)
-
-db = firestore.client()
-app = Flask(__name__, template_folder="templates")
+app = Flask(__name__)
+client = genai.Client()
 
 @app.route("/")
 def index():
@@ -42,7 +43,67 @@ def index():
     link += "<a href='/weather'>天氣查詢</a><hr>"
     link += "<a href='/rate'>電影分級資料庫更新</a><hr>"
     link += "<a href='/demo'>聊天機器人</a><hr>"
+    link += "<a href='/ask'>Gemini</a><hr>"
     return link
+
+@app.route('/ask', methods=['GET', 'POST']) 
+def ask():
+    if request.method == "POST":
+        user_prompt = request.form.get('prompt', '')
+        if not user_prompt:
+            return "請輸入內容", 400
+        try:
+            c = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+            response = c.models.generate_content(
+                model='gemini-3.5-flash',
+                contents=user_prompt,
+            )
+            return response.text
+        except Exception as e:
+            return f"發生錯誤: {str(e)}", 500
+    else:    
+        return render_template("ask.html")
+
+@app.route("/webhook7", methods=["POST"])
+def webhook7():
+    req = request.get_json(force=True)
+    action = req.get("queryResult").get("action")
+
+    if action == "rateChoice":
+        rate = req.get("queryResult").get("parameters").get("rate")
+        info = "您選擇的電影分級是：" + rate + "，相關電影：\n"
+        db = firestore.client()
+        docs = db.collection("本週新片含分級").get()
+        result = ""
+        for doc in docs:
+            d = doc.to_dict()
+            if rate in d["rate"]:
+                result += "片名：" + d["title"] + "\n"
+                result += "介紹：" + d["hyperlink"] + "\n\n"
+        if result == "":
+            result = "本週沒有符合該分級的電影"
+        info += result
+
+    elif action == "input.unknown":
+        user_input = req["queryResult"]["queryText"]
+        try:
+            c = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+            ai_config = types.GenerateContentConfig(
+                max_output_tokens=400
+            )
+            response = c.models.generate_content(
+                model="gemini-3.5-flash",
+                contents=f"請用純文字、不要用Markdown，用一句話（50字內）回答：{user_input}",
+                config=ai_config,
+            )
+            info = response.text.replace("**", "").replace("##", "").replace("###", "")
+            # 強制截斷在60字
+            if len(info) > 60:
+                info = info[:60] + "..."
+        except Exception as e:
+            info = f"AI 發生錯誤：{str(e)}"
+
+    return make_response(jsonify({"fulfillmentText": info}))
 
 @app.route("/demo")
 def demo():
