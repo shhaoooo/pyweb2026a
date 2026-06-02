@@ -92,7 +92,7 @@ def webhook7():
                 max_output_tokens=400
             )
             response = c.models.generate_content(
-                model="gemini-3.5-flash",
+                model="gemini-3.1-flash-lite",
                 contents=f"請用純文字、不要用Markdown，用一句話（50字內）回答：{user_input}",
                 config=ai_config,
             )
